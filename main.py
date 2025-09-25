@@ -37,7 +37,19 @@ async def lifespan(app: FastAPI):
     # On startup, launch the browser and store it in the state.
     print("🚀 Starting browser...")
     p = await async_playwright().start()
-    browser = await p.chromium.launch(headless=True)
+    
+    # --- THIS IS THE MODIFIED LINE ---
+    # Add '--no-sandbox' and '--disable-gpu' arguments for compatibility with serverless/container environments.
+    browser = await p.chromium.launch(
+        headless=True,
+        args=[
+                '--single-process',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+            ]
+    )
+    # ---------------------------------
+    
     playwright_state["browser"] = browser
     playwright_state["playwright"] = p
     print("✅ Browser started successfully.")
