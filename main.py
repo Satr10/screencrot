@@ -1,11 +1,14 @@
 import os
 from fastapi import FastAPI, HTTPException, Depends, Query
-from fastapi.responses import Response
+from fastapi.responses import Response, RedirectResponse
 from playwright.async_api import async_playwright, Playwright, Browser
 from fastapi.security import APIKeyHeader
 from typing import Optional, Literal
 
-app = FastAPI()
+app = FastAPI(
+    title="Screenshot API",
+    description="API to take screenshots of web pages.",
+)
 
 # API Key Setup
 API_KEY = os.environ.get("API_KEY")
@@ -63,7 +66,8 @@ async def take_screenshot(
     api_key: str = Depends(get_api_key),
     browser: Browser = Depends(get_browser),
     width: int = Query(1280, description="Screenshot width"),
-    height: int = Query(720, description="Screenshot height"),
+    height: int = Query(720, description="Screenshot height for the initial viewport"),
+    full_page: bool = Query(True, description="Capture the full scrollable page"), # <-- PERUBAHAN DI SINI
     user_agent: Literal['desktop', 'mobile'] = Query('desktop', description="User agent type"),
     quality: int = Query(80, ge=0, le=100, description="Screenshot quality (for JPEG)"),
     wait_until: Literal['load', 'domcontentloaded', 'networkidle', 'commit'] = Query('networkidle', description="Wait until event")
@@ -79,7 +83,6 @@ async def take_screenshot(
     if user_agent == 'mobile':
         user_agent_string = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1"
 
-
     context = await browser.new_context(
         viewport={'width': width, 'height': height},
         user_agent=user_agent_string
@@ -88,14 +91,20 @@ async def take_screenshot(
 
     try:
         await page.goto(url, wait_until=wait_until)
-        screenshot_bytes = await page.screenshot(type="jpeg", quality=quality, full_page=False)
+        # Menggunakan parameter full_page dari query
+        screenshot_bytes = await page.screenshot(
+            type="jpeg", 
+            quality=quality, 
+            full_page=full_page # <-- PERUBAHAN DI SINI
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to take screenshot: {str(e)}")
-    finally:
         await context.close()
+        raise HTTPException(status_code=500, detail=f"Failed to take screenshot: {str(e)}")
+    
+    await context.close()
 
     return Response(content=screenshot_bytes, media_type="image/jpeg")
 
 @app.get("/")
 def read_root():
-    return {"message": "Screenshot API is ready. Use the /screenshot endpoint."}
+    return RedirectResponse(url="/docs")
