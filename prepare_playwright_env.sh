@@ -2,8 +2,8 @@
 
 set -e
 
-# Install dependensi Python
-pip install "fastapi[all]" uvicorn playwright
+# Install Python dependencies
+pip install -r requirements.txt
 
-# Install browser Playwright dan dependensinya
+# Install Playwright browsers and their dependencies
 playwright install --with-deps chromium
